@@ -22,7 +22,7 @@ export default function UsersPage() {
       <h1>Users data</h1>
       <ul>
         {users.map((user) => (
-          <li key={user.id}>{user.Email}</li> // adjust field names to match your table
+          <li key={user.id}>Email Address: {user.Email}</li> // adjust field names to match your table
         ))}
       </ul>
     </div>
