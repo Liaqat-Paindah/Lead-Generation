@@ -19,7 +19,7 @@ export default function UsersPage() {
 
   return (
     <div>
-      <h1>Users</h1>
+      <h1>Users data</h1>
       <ul>
         {users.map((user) => (
           <li key={user.id}>{user.Email}</li> // adjust field names to match your table
