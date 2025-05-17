@@ -91,9 +91,9 @@ CREATE TABLE services_offered (
     UNIQUE (provider_id, subservice_id, location_id)
 );
 
-CREATE TABLE provider_service_media (
+CREATE TABLE provider_portfolios (
     id SERIAL PRIMARY KEY,
-    service_offered_id INT REFERENCES provider_services_offered(id) ON DELETE CASCADE,
+    service_offered_id INT REFERENCES services_offered(id) ON DELETE CASCADE,
     media_url TEXT,
     media_type TEXT CHECK (media_type IN ('photo')),
     uploaded_at TIMESTAMP DEFAULT now()
@@ -174,6 +174,30 @@ CREATE TABLE credit_packages (
     name TEXT,
     credits INT NOT NULL,
     price NUMERIC NOT NULL
+);
+-- ✅ CARD DETAILS (store user card info, only last 4 digits)
+CREATE TABLE card_details (
+    card_id SERIAL PRIMARY KEY,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    card_number TEXT, -- Store only last 4 digits for security
+    card_type TEXT,   -- e.g., 'Visa', 'MasterCard'
+    expiry_month INT,
+    expiry_year INT,
+    cardholder_name TEXT,
+    billing_address TEXT,
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now()
+);
+
+-- ✅ CREDIT PURCHASES (track provider credit purchases via card)
+CREATE TABLE credit_purchases (
+    purchase_id SERIAL PRIMARY KEY,
+    provider_id UUID REFERENCES service_providers(provider_id) ON DELETE CASCADE,
+    card_id INT REFERENCES card_details(card_id),
+    credits_purchased INT NOT NULL,
+    amount_paid NUMERIC NOT NULL,
+    purchase_time TIMESTAMP DEFAULT now(),
+    status TEXT CHECK (status IN ('pending', 'completed', 'failed')) DEFAULT 'pending'
 );
 
 -- ✅ DYNAMIC FORMS
@@ -305,6 +329,35 @@ CREATE TABLE notifications (
     created_at TIMESTAMP
 );
 
+-- Table: conversations
+-- Stores a conversation between two users (customer and provider)
+CREATE TABLE conversations (
+    conversation_id SERIAL PRIMARY KEY,
+    user1_id UUID REFERENCES users(id), -- One participant (customer or provider)
+    user2_id UUID REFERENCES users(id), -- The other participant
+    started_at TIMESTAMP DEFAULT now(),
+    last_message_at TIMESTAMP DEFAULT now(),
+    is_email BOOLEAN DEFAULT FALSE, -- TRUE if this is an email-based conversation
+    UNIQUE (user1_id, user2_id, is_email)
+);
+
+-- Table: conversation_messages
+-- Stores messages exchanged in a conversation (live chat or email)
+CREATE TABLE conversation_messages (
+    message_id SERIAL PRIMARY KEY,
+    conversation_id INT REFERENCES conversations(conversation_id) ON DELETE CASCADE,
+    sender_id UUID REFERENCES users(id),
+    recipient_id UUID REFERENCES users(id),
+    message_text TEXT,
+    sent_at TIMESTAMP DEFAULT now(),
+    is_read BOOLEAN DEFAULT FALSE,
+    is_email BOOLEAN DEFAULT FALSE, -- TRUE if this message was sent by email
+    email_subject TEXT, -- Optional, for email messages
+    email_status TEXT CHECK (email_status IN ('pending', 'sent', 'failed')),
+    -- You can add attachments, etc. as needed
+    UNIQUE (conversation_id, message_id)
+);
+
 -- ✅ TRUST & SAFETY
 CREATE TABLE incident_reports (
     id SERIAL PRIMARY KEY,
@@ -325,13 +378,6 @@ CREATE TABLE saved_items (
     created_at TIMESTAMP DEFAULT now()
 );
 
-CREATE TABLE match_history (
-    id SERIAL PRIMARY KEY,
-    provider_id UUID REFERENCES service_providers(provider_id),
-    request_id INT REFERENCES requests(request_id),
-    score DECIMAL(5,2),
-    calculated_at TIMESTAMP DEFAULT now()
-);
 
 -- =============================================
 -- JOBS MODULE DATABASE MODELS
@@ -439,15 +485,60 @@ CREATE TABLE job_applications (
     updated_at TIMESTAMP DEFAULT now()
 );
 
--- ✅ 7. JOB SEARCH LOG
--- Tracks search behavior for personalization/analytics
-
-CREATE TABLE job_search_log (
+-- Table: job_announcement_search_log
+-- Logs each job announcement search and the top 10 matched job seekers
+CREATE TABLE job_announcement_search_log (
     id SERIAL PRIMARY KEY,
-    user_id UUID REFERENCES users(id),
-    keywords TEXT,
-    filters JSONB,
-    timestamp TIMESTAMP DEFAULT now()
+    job_id INT REFERENCES job_announcements(job_id) ON DELETE CASCADE,
+    search_keywords TEXT,
+    search_time TIMESTAMP DEFAULT now(),
+    top_job_seeker_ids UUID[], -- Array of top 10 user_ids (job seekers)
+    created_at TIMESTAMP DEFAULT now()
+);
+
+-- Table: job_announcement_offers
+-- Stores offers sent to top 10 matched job seekers
+CREATE TABLE job_announcement_offers (
+    offer_id SERIAL PRIMARY KEY,
+    search_log_id INT REFERENCES job_announcement_search_log(id) ON DELETE CASCADE,
+    job_seeker_id UUID REFERENCES users(id),
+    job_id INT REFERENCES job_announcements(job_id),
+    status TEXT CHECK (status IN ('sent', 'opened', 'accepted', 'rejected')) DEFAULT 'sent',
+    opened_at TIMESTAMP,
+    accepted_at TIMESTAMP,
+    rejected_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now(),
+    UNIQUE (search_log_id, job_seeker_id)
+);
+
+-- Table: professional_search_log
+-- Logs each customer search and the top 5 matched providers
+CREATE TABLE professional_search_log (
+    id SERIAL PRIMARY KEY,
+    user_id UUID REFERENCES users(id), -- Customer who searched
+    subservice_id INT REFERENCES subservices(subservice_id),
+    search_keywords TEXT,
+    search_time TIMESTAMP DEFAULT now(),
+    top_provider_ids UUID[], -- Array of top 5 provider_ids
+    created_at TIMESTAMP DEFAULT now()
+);
+
+-- Table: professional_offers
+-- Stores offers sent to top 5 matched providers
+CREATE TABLE professional_offers (
+    offer_id SERIAL PRIMARY KEY,
+    search_log_id INT REFERENCES professional_search_log(id) ON DELETE CASCADE,
+    provider_id UUID REFERENCES service_providers(provider_id),
+    request_id INT REFERENCES requests(request_id),
+    status TEXT CHECK (status IN ('sent', 'opened', 'accepted', 'rejected')) DEFAULT 'sent',
+    opened_at TIMESTAMP,
+    accepted_at TIMESTAMP,
+    rejected_at TIMESTAMP,
+    credits_deducted BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now(),
+    UNIQUE (search_log_id, provider_id)
 );
 
 -- Master locations table for all entities
@@ -458,7 +549,6 @@ CREATE TABLE locations (
     city TEXT,
     state TEXT,
     zip TEXT,
-    country TEXT,
     timezone TEXT,
     created_at TIMESTAMP DEFAULT now(),
     updated_at TIMESTAMP DEFAULT now()
@@ -498,6 +588,19 @@ CREATE TABLE job_announcement_locations (
     location_id INT REFERENCES locations(id) ON DELETE CASCADE
 );
 
+-- Table: call_requests
+-- Stores call requests from users to providers
+CREATE TABLE call_requests (
+    id SERIAL PRIMARY KEY,
+    requester_id UUID REFERENCES users(id) NOT NULL, -- User who requests the call
+    provider_id UUID REFERENCES service_providers(provider_id) NOT NULL, -- Provider to call
+    requested_at TIMESTAMP DEFAULT now(),
+    status TEXT CHECK (status IN ('pending', 'completed', 'cancelled')) DEFAULT 'pending',
+    scheduled_time TIMESTAMP, -- Optional: scheduled call time
+    notes TEXT, -- Optional: extra info from requester
+    UNIQUE (requester_id, provider_id, requested_at)
+);
+
 2. Key Relationships
 User & Auth
 users ← user_rules (M:N via join table)
@@ -514,6 +617,7 @@ service_providers ← job_profiles (1:1)
 service_providers ← proposals (1:M)
 service_providers ← reviews (1:M)
 service_providers ← match_history (1:M)
+services_offered ← provider_portfolios (1:M)
 Services & Categories
 categories ← services (1:M)
 services ← subservices (1:M)
