@@ -1,6 +1,7 @@
 -- ✅ USER & AUTH MODULE
 
 -- Users
+New Files
 CREATE TABLE users (
     id UUID PRIMARY KEY,  -- Unique identifier for each user
     first_name TEXT,  -- User's first name (e.g., "John")
@@ -125,7 +126,7 @@ CREATE TABLE provider_business_hours (
     day_of_week SMALLINT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6), -- 0=Sunday, 6=Saturday
     open_time TIME,
     close_time TIME,
-    availability_status TEXT CHECK calandar-- Indicates if the provider is available during this time
+    availability_status TEXT, -- Indicates if the provider is available during this time
     is_closed BOOLEAN DEFAULT FALSE,          -- Marks day/shift as closed
     timezone TEXT NOT NULL,                   -- IANA timezone string
     notes TEXT,                              -- Special notes (e.g., "Closed on holidays")
@@ -138,13 +139,7 @@ CREATE TABLE provider_business_hours (
 
 -- Table: provider_profile_media
 -- Stores media (e.g., photos) for a provider's general profile, not tied to a specific service
-CREATE TABLE provider_profile_media (
-    id SERIAL PRIMARY KEY,
-    provider_id UUID REFERENCES service_providers(provider_id) ON DELETE CASCADE,
-    media_url TEXT NOT NULL,
-    media_type TEXT CHECK (media_type IN ('photo', 'video')) DEFAULT 'photo',
-    uploaded_at TIMESTAMP DEFAULT now()
-);
+
 
 -- Track all credit transactions (purchases, deductions, etc.)
 CREATE TABLE credit_transactions (
@@ -219,7 +214,7 @@ CREATE TABLE service_request_answers (
     answer_id SERIAL PRIMARY KEY,
     form_id INT REFERENCES service_request_forms(form_id),
     user_id UUID REFERENCES users(id),
-    answer_text TEXT,   // 
+    answer_text TEXT,   
     created_at TIMESTAMP,
     updated_at TIMESTAMP
 );
@@ -305,7 +300,7 @@ CREATE TABLE support_tickets (
     user_id UUID REFERENCES users(id),
     subject TEXT,
     message TEXT,
-    channel TEXT CHECK (channel IN ('email', 'live_chat')) DEFAULT 'email'
+    channel TEXT CHECK (channel IN ('email', 'live_chat')) DEFAULT 'email', 
     status TEXT CHECK (status IN ('open', 'closed')),
     created_at TIMESTAMP,
     updated_at TIMESTAMP
@@ -637,3 +632,6 @@ users ← job_announcements (1:M)
 categories ← job_announcements (1:M)
 job_announcements ← job_applications (1:M)
 service_providers ← job_applications (1:M)
+
+
+link of the database: https://dbdiagram.io/d/651b0f2c4a3d1e001f7a5b8c
