@@ -1,0 +1,44 @@
+US Connecter: Project Overview
+________________________________________
+Project Activities Done
+•	Requirement Gathering
+•	Entity Relationship Diagram (ERD)
+•	Database Schema Design
+•	Database Creation & Setup
+Selected Technology Stack 
+•	Frontend & Backend:
+Next.js – a React-based full-stack framework ideal for SEO-friendly, Modern and performant web apps
+•	Database:
+Supabase – a cloud-hosted PostgreSQL with built-in authentication and real-time capabilities
+•	Production Hosting:
+Vercel , – optimized for deploying Next.js applications
+________________________________________
+Local Development Configuration
+•	Version control using Git
+•	Repository hosted on GitHub with branching strategy (e.g., main, develop, feature branches)
+•	Optional: Pre-commit hooks and code linting setup (e.g., ESLint, Prettier)
+________________________________________
+Design Requirements
+To ensure consistent and professional UI/UX design, define the following:
+Branding Specifications
+•	Logo: Placement, dimensions, variations (light/dark background)
+•	Color Palette:
+o	Primary Colors (e.g., call-to-action buttons)
+o	Secondary Colors (backgrounds, hover states)
+•	Typography:
+o	Font families (e.g., Inter, Roboto)
+o	Usage for headings, body text, and labels
+o	Font weights (light, regular, medium, bold)
+UI Design System
+•	Layout structure (grid system, breakpoints)
+•	Navigation (top bar, sidebar)
+•	Form components (inputs, dropdowns, toggles)
+•	Buttons (states: default, hover, disabled)
+•	Spacing and margin system
+•	Icon set and style
+•	Footer and header layout conventions
+________________________________________
+Task Scheduling & Team Collaboration
+•	Recommended Tool: Connecteam – excellent for managing tasks, schedules, and team communication for distributed teams
+
+
